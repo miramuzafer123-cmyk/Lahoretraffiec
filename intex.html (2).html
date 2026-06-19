@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lahore Traffic Live — راستہ چیک کریں</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#080d18;--surface:#0d1525;--surface2:#111827;--border:#1e2d45;--border2:#243347;
+    --text:#e2e8f0;--muted:#64748b;--accent:#3b82f6;--accent2:#6366f1;
+    --green:#10b981;--yellow:#f59e0b;--orange:#f97316;--red:#dc2626;--blue:#3b82f6;
+    --rain:#60a5fa;--flood:#7c3aed;
+  }
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--bg);color:var(--text);
+    min-height:100vh;
+    background-image:radial-gradient(ellipse at 20% 0%,rgba(59,130,246,.07) 0%,transparent 60%),
+                     radial-gradient(ellipse at 80% 100%,rgba(99,102,241,.05) 0%,transparent 60%);
+  }
+  button{cursor:pointer;font-family:inherit}
+  input{font-family:inherit}
+
+  /* ── HEADER ── */
+  header{
+    background:rgba(8,13,24,.92);backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:100;
+    padding:14px 20px;
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  }
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 20px rgba(99,102,241,.3)}
+  .logo h1{font-size:17px;font-weight:800;letter-spacing:-.3px;color:#fff}
+  .logo p{font-size:11px;color:var(--muted);font-weight:500}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .live-badge{display:flex;align-items:center;gap:6px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700}
+  .live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+  .clock-badge{font-size:11px;font-weight:700;font-family:monospace;color:#94a3b8;background:var(--surface2);border:1px solid var(--border);padding:5px 12px;border-radius:10px}
+
+  /* ── MAIN GRID ── */
+  main{max-width:1200px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 2fr;gap:20px}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+
+  /* ── CARDS ── */
+  .card{background:rgba(13,21,37,.7);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:20px;padding:20px;box-shadow:0 4px 24px rgba(0,0,0,.3)}
+  .card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:16px}
+  .card-title svg,.card-title span.icon{width:16px;height:16px;flex-shrink:0}
+
+  /* ── INPUTS ── */
+  .input-group{margin-bottom:14px}
+  .input-label{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .input-dot-green{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+  .input-dot-red{width:7px;height:7px;background:var(--red);border-radius:50%;animation:pulse 2s infinite .5s}
+  .inp{
+    width:100%;background:rgba(17,24,39,.7);border:1px solid var(--border2);
+    color:var(--text);padding:11px 14px;border-radius:14px;font-size:13px;font-weight:500;outline:none;
+    transition:border-color .2s,box-shadow .2s;
+  }
+  .inp:focus{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+  .btn-primary{
+    width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;font-weight:700;font-size:13px;padding:13px;border-radius:14px;
+    border:none;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+    box-shadow:0 4px 20px rgba(99,102,241,.2);
+  }
+  .btn-primary:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px)}
+  .btn-primary:disabled{opacity:.6;cursor:not-allowed}
+  .btn-small{
+    background:var(--surface2);border:1px solid var(--border2);color:#94a3b8;
+    padding:7px 12px;border-radius:10px;font-size:11px;font-weight:700;
+    display:flex;align-items:center;gap:5px;transition:all .2s;
+  }
+  .btn-small:hover{border-color:var(--accent2);color:#c7d2fe}
+  .row-btns{display:flex;gap:8px;margin-bottom:14px}
+
+  /* ── ALERTS PANEL ── */
+  #alerts-panel{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+  .alert-item{
+    border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;
+    border:1px solid;font-size:12px;
+    animation:slideIn .4s ease;
+  }
+  @keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+  .alert-icon{font-size:18px;flex-shrink:0;line-height:1}
+  .alert-body h4{font-weight:700;font-size:12px;margin-bottom:3px}
+  .alert-body p{font-size:11px;opacity:.75;line-height:1.4}
+  .alert-body .alt-route{margin-top:8px;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.05);font-size:11px;font-weight:600}
+  .alt-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.6;margin-bottom:3px}
+
+  .alert-rain{background:rgba(96,165,250,.07);border-color:rgba(96,165,250,.3);color:#93c5fd}
+  .alert-flood{background:rgba(124,58,237,.08);border-color:rgba(124,58,237,.35);color:#c4b5fd}
+  .alert-jam{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.3);color:#fca5a5}
+  .alert-road{background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.3);color:#fdba74}
+  .alert-clear{background:rgba(16,185,129,.07);border-color:rgba(16,185,129,.25);color:#6ee7b7}
+  .alert-namaz{background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.35);color:#ddd6fe}
+
+  /* ── WEATHER CARD ── */
+  #weather-card{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:rgba(17,24,39,.5);border:1px solid var(--border2);margin-bottom:16px}
+  .weather-icon{font-size:32px;line-height:1}
+  .weather-info h3{font-size:15px;font-weight:800;color:#fff}
+  .weather-info p{font-size:11px;color:var(--muted);margin-top:2px}
+  .weather-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .w-tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+
+  /* ── STATS GRID ── */
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+  .stat-box{background:rgba(8,13,24,.6);border:1px solid var(--border);border-radius:14px;padding:12px;text-align:center}
+  .stat-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px}
+  .stat-value{font-size:20px;font-weight:900;color:#fff}
+  .stat-sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+  .fuel-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .fuel-box{border-radius:14px;padding:12px;text-align:center;border:1px solid}
+  .fuel-box.petrol{background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.25)}
+  .fuel-box.co2{background:rgba(16,185,129,.05);border-color:rgba(16,185,129,.2)}
+  .fuel-icon{font-size:18px;margin-bottom:4px}
+  .fuel-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .fuel-value{font-size:16px;font-weight:800}
+  .fuel-sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* ── MAP ── */
+  #map{width:100%;height:460px;border-radius:16px;overflow:hidden;border:1px solid var(--border)}
+  .map-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .map-status{font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+  .map-status.ready{color:var(--green)}
+  .map-status.loading{color:var(--yellow)}
+
+  /* ── QUICK ROADS ── */
+  .roads-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  @media(max-width:600px){.roads-grid{grid-template-columns:1fr}}
+  .road-btn{
+    background:rgba(13,21,37,.8);border:1px solid var(--border2);border-radius:14px;padding:12px 14px;
+    text-align:left;transition:all .2s;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    position:relative;overflow:hidden;
+  }
+  .road-btn:hover{border-color:var(--accent2);background:rgba(17,24,39,.9)}
+  .road-btn-left{display:flex;align-items:center;gap:10px}
+  .road-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .road-name{font-size:12px;font-weight:700;color:#fff}
+  .road-sub{font-size:10px;color:var(--muted);margin-top:1px}
+  .road-time{font-size:13px;font-weight:900;color:#fff;text-align:right}
+  .road-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px;text-transform:uppercase}
+
+  /* ── ADVISORY BOX ── */
+  .advisory{border-radius:14px;padding:13px 14px;border:1px solid;margin-bottom:14px;font-size:12px}
+  .advisory h4{font-weight:700;font-size:13px;margin-bottom:5px}
+  .advisory p{opacity:.8;line-height:1.5;font-size:11px}
+  .advisory .clear-time{margin-top:8px;font-size:10px;font-weight:700;color:var(--muted)}
+
+  /* ── ROUTE HEADER ── */
+  .route-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+  .route-from-to{font-size:11px;font-weight:600;color:var(--accent2)}
+  .route-badge{font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid;white-space:nowrap}
+
+  /* ── ALTERNATIVES ── */
+  .alt-routes{margin-top:14px}
+  .alt-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .alt-route-item{background:rgba(8,13,24,.5);border:1px solid var(--border2);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+  .alt-route-item .name{font-weight:600;color:#e2e8f0}
+  .alt-route-item .time{font-weight:800;color:var(--green)}
+  .alt-route-item .detail{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* ── TIME MODE ── */
+  .time-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .time-btn{
+    padding:10px 12px;border-radius:12px;border:1px solid var(--border2);
+    background:var(--surface2);color:#94a3b8;font-size:11px;font-weight:700;
+    text-align:left;transition:all .2s;
+  }
+  .time-btn.active{background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(99,102,241,.2));border-color:var(--accent2);color:#c7d2fe}
+  .time-btn span{display:block;font-size:9px;opacity:.6;margin-bottom:2px;text-transform:uppercase;letter-spacing:.05em}
+
+  /* ── SPINNER ── */
+  .spin{animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── AQI ── */
+  .aqi-badge{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:10px;border:1px solid;font-size:11px;font-weight:700}
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:var(--surface)}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+  /* ── TOAST ── */
+  #toast{
+    position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-60px);
+    background:#10b981;color:#fff;font-size:12px;font-weight:700;
+    padding:10px 20px;border-radius:20px;z-index:999;
+    transition:transform .3s ease;box-shadow:0 4px 20px rgba(0,0,0,.4);
+  }
+  #toast.show{transform:translateX(-50%) translateY(0)}
+
+  footer{text-align:center;padding:24px;font-size:11px;color:var(--muted);border-top:1px solid var(--border);margin-top:20px}
+  .right-panel{display:flex;flex-direction:column;gap:18px}
+</style>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#3b82f6"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="LahoreTraffic"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
+  <meta name="description" content="Lahore ka real-time traffic checker — live alerts, namaz times, alternative routes"/>
+  <script>
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
+  </script>
+</head>
+<body>
+
+<div id="toast">✅ Copy ho gaya!</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🚦</div>
+    <div>
+      <h1>Lahore Traffic Live</h1>
+      <p dir="rtl" style="font-size:12px;color:#818cf8">اپنا راستہ چیک کریں • Live Alerts • Alternative Routes</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="aqi-badge" class="aqi-badge" style="border-color:rgba(249,115,22,.4);color:#fdba74;background:rgba(249,115,22,.08)">
+      💨 AQI <span id="aqi-val">—</span>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="clock-badge" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT COLUMN -->
+  <div style="display:flex;flex-direction:column;gap:18px">
+
+    <!-- ROUTE CARD -->
+    <div class="card">
+      <div class="card-title">🗺️ Route Daalein</div>
+
+      <!-- WEATHER STRIP -->
+      <div id="weather-card">
+        <div class="weather-icon" id="w-icon">🔄</div>
+        <div class="weather-info">
+          <h3 id="w-temp">Loading...</h3>
+          <p id="w-desc">Weather check ho raha hai...</p>
+          <div class="weather-tags" id="w-tags"></div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div class="input-label"><div class="input-dot-green"></div> Kahan Se (Start)</div>
+        <input class="inp" id="inp-from" type="text" value="Thokar Niaz Baig, Lahore" placeholder="e.g. Thokar Niaz Baig"/>
+      </div>
+      <div class="input-group">
+        <div class="input-label"><div class="input-dot-red"></div> Kahan Jana Hai (Destination)</div>
+        <input class="inp" id="inp-to" type="text" value="Liberty Market, Lahore" placeholder="e.g. Liberty Market"/>
+      </div>
+
+      <div class="row-btns">
+        <button class="btn-small" onclick="swapRoute()" title="Swap">⇅ Swap</button>
+        <button class="btn-small" onclick="saveRoute()" title="Save">★ Save</button>
+        <button class="btn-small" onclick="shareRoute()" title="Share">↗ Share</button>
+        <button class="btn-small" onclick="speakRoute()" title="Voice">🔊 Voice</button>
+      </div>
+
+      <button class="btn-primary" id="search-btn" onclick="checkRoute()">
+        <span>🔍</span> Check Live Route • سفر چیک کریں
+      </button>
+    </div>
+
+    <!-- TIME SIMULATION -->
+    <div class="card">
+      <div class="card-title">⏰ Simulation Mode</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:10px">Check karein mukhtalif auqat mein traffic kaisi hogi</p>
+      <div class="time-grid">
+        <button class="time-btn active" id="t-live" onclick="setTimeMode('live')"><span>Abhi Ka</span>Live System Clock</button>
+        <button class="time-btn" id="t-morning" onclick="setTimeMode('morning')"><span>Subah Rush</span>09:00 AM</button>
+        <button class="time-btn" id="t-afternoon" onclick="setTimeMode('afternoon')"><span>Dopehar</span>02:00 PM</button>
+        <button class="time-btn" id="t-evening" onclick="setTimeMode('evening')"><span>Shaam Peak</span>06:15 PM</button>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:8px 12px;border-radius:10px">
+        Active: <span id="time-label" style="color:#818cf8;font-weight:700">Live</span>
+      </div>
+    </div>
+
+    <!-- SAVED ROUTES -->
+    <div class="card">
+      <div class="card-title">★ Saved Routes</div>
+      <div id="saved-list" style="display:flex;flex-direction:column;gap:8px">
+        <p style="font-size:11px;color:var(--muted)">Koi route save nahi kiya abhi.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-panel">
+
+    <!-- LIVE ALERTS PANEL -->
+    <div class="card">
+      <div class="card-title">⚠️ Live Road Alerts — اس وقت کی صورتحال</div>
+      <div id="alerts-panel">
+        <div class="alert-item alert-clear">
+          <div class="alert-icon">🔄</div>
+          <div class="alert-body"><h4>Alerts Load Ho Rahe Hain...</h4><p>Lahore ki traffic aur mausam check ho raha hai</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROUTE STATS -->
+    <div class="card" id="stats-card" style="display:none">
+      <div class="route-header">
+        <div>
+          <div class="card-title" style="margin-bottom:4px">📊 Route Analysis</div>
+          <div class="route-from-to" id="route-fromto"></div>
+        </div>
+        <div class="route-badge" id="traffic-badge"></div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Normal Time</div>
+          <div class="stat-value" id="s-normal">—</div>
+          <div class="stat-sub">Minutes</div>
+        </div>
+        <div class="stat-box" style="border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.05)">
+          <div class="stat-label" style="color:#818cf8">With Traffic</div>
+          <div class="stat-value" id="s-traffic" style="color:#c7d2fe">—</div>
+          <div class="stat-sub">Minutes</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Distance</div>
+          <div class="stat-value" id="s-dist">—</div>
+          <div class="stat-sub">km</div>
+        </div>
+      </div>
+
+      <div class="fuel-grid">
+        <div class="fuel-box petrol">
+          <div class="fuel-icon">⛽</div>
+          <div class="fuel-label" style="color:#fbbf24">Petrol</div>
+          <div class="fuel-value" style="color:#fde68a" id="s-fuel">—</div>
+          <div class="fuel-sub" id="s-fuel-rs"></div>
+        </div>
+        <div class="fuel-box co2">
+          <div class="fuel-icon">🌿</div>
+          <div class="fuel-label" style="color:#6ee7b7">CO₂</div>
+          <div class="fuel-value" style="color:#a7f3d0" id="s-co2">—</div>
+          <div class="fuel-sub">Is safar mein</div>
+        </div>
+      </div>
+
+      <div class="advisory" id="advisory-box">
+        <h4 id="advisory-title"></h4>
+        <p id="advisory-desc"></p>
+        <div class="clear-time" id="advisory-clear"></div>
+      </div>
+
+      <!-- ALTERNATIVE ROUTES -->
+      <div class="alt-routes" id="alt-routes-section">
+        <div class="alt-title">🔀 Alternative Routes (متبادل راستے)</div>
+        <div id="alt-routes-list"></div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="card" style="padding:16px">
+      <div class="map-header">
+        <div class="card-title" style="margin-bottom:0">🗺️ Interactive Lahore Map</div>
+        <div class="map-status loading" id="map-status">⏳ Loading...</div>
+      </div>
+
+      <!-- Map Tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button id="tab-osm" onclick="switchMapTab('osm')" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--accent2);background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(99,102,241,.2));color:#c7d2fe;font-size:11px;font-weight:700;cursor:pointer">
+          🗺️ Traffic Markers
+        </button>
+        <button id="tab-google" onclick="switchMapTab('google')" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer">
+          📍 Google Route
+        </button>
+      </div>
+
+      <!-- Leaflet Map (traffic markers) -->
+      <div id="map-osm-wrap">
+        <div id="map"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:11px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;gap:14px">
+            <span style="display:flex;align-items:center;gap:5px;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span>Clear</span>
+            <span style="display:flex;align-items:center;gap:5px;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:var(--yellow);display:inline-block"></span>Slow</span>
+            <span style="display:flex;align-items:center;gap:5px;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>Jam</span>
+            <span style="display:flex;align-items:center;gap:5px;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:var(--rain);display:inline-block"></span>Rain Area</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Maps Route (accurate Lahore roads) -->
+      <div id="map-google-wrap" style="display:none">
+        <iframe id="google-map-frame"
+          src="https://maps.google.com/maps?saddr=Thokar+Niaz+Baig+Lahore+Pakistan&daddr=Liberty+Market+Lahore+Pakistan&output=embed&hl=ur"
+          style="width:100%;height:460px;border-radius:16px;border:1px solid var(--border)"
+          allowfullscreen loading="lazy">
+        </iframe>
+        <p style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center">
+          📍 Google Maps — Lahore ki accurate roads • <a href="" id="gmaps-link" target="_blank" style="color:var(--accent2)">Google Maps mein kholein ↗</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- QUICK ROADS -->
+    <div class="card">
+      <div class="card-title">⚡ Quick Road Check</div>
+      <div class="roads-grid" id="roads-grid"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  🗺️ Traffic Markers: <strong>OpenStreetMap</strong> • Route: <strong>Google Maps</strong> • Distance: <strong>OSRM</strong> • Weather: <strong>Open-Meteo</strong><br/>
+  <span style="margin-top:6px;display:block" dir="rtl">لاہور کے ہر شہری کے لئے مفت • Real-Time Traffic + Weather Alerts</span>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════════
+const HOTSPOTS = {
+  "thokar niaz baig":{lat:31.4704,lng:74.2403},
+  "thokar":{lat:31.4704,lng:74.2403},
+  "liberty market":{lat:31.5115,lng:74.3491},
+  "liberty":{lat:31.5115,lng:74.3491},
+  "kalma chowk":{lat:31.5020,lng:74.3312},
+  "gulberg":{lat:31.5115,lng:74.3491},
+  "mall road":{lat:31.5562,lng:74.3259},
+  "gpo lahore":{lat:31.5658,lng:74.3148},
+  "model town":{lat:31.4843,lng:74.3267},
+  "johar town":{lat:31.4697,lng:74.2728},
+  "dha phase 6":{lat:31.4682,lng:74.4512},
+  "dha":{lat:31.4682,lng:74.4512},
+  "wapda town":{lat:31.4325,lng:74.2715},
+  "shahi qila":{lat:31.5878,lng:74.3142},
+  "lahore fort":{lat:31.5878,lng:74.3142},
+  "badshahi mosque":{lat:31.5882,lng:74.3105},
+  "airport":{lat:31.5222,lng:74.4089},
+  "allama iqbal airport":{lat:31.5222,lng:74.4089},
+  "minar-e-pakistan":{lat:31.5925,lng:74.3095},
+  "lahore cantt":{lat:31.5236,lng:74.3781},
+  "cantt":{lat:31.5236,lng:74.3781},
+  "barkat market":{lat:31.5034,lng:74.3195},
+  "ichhra":{lat:31.5284,lng:74.3218},
+  "anarkali":{lat:31.5694,lng:74.3128},
+  "gulshan ravi":{lat:31.5452,lng:74.2865},
+  "shahdara":{lat:31.6215,lng:74.3054},
+  "faisal town":{lat:31.4880,lng:74.3050},
+  "mazang":{lat:31.5488,lng:74.3121},
+  "chungi amar sidhu":{lat:31.4624,lng:74.3592},
+  "peco road":{lat:31.4674,lng:74.3138},
+  "bedian road":{lat:31.4645,lng:74.4172},
+  "township":{lat:31.4700,lng:74.2900},
+  "garden town":{lat:31.5040,lng:74.3390},
+  "valencia town":{lat:31.5330,lng:74.4190},
+  "bahria town lahore":{lat:31.3636,lng:74.1875},
+};
+
+const MAIN_ROADS = [
+  {name:'Peco Road',sub:'Kot Lakhpat → Township',baseMin:10,dist:'5.2',lat:31.4674,lng:74.3138,to:'Township, Lahore'},
+  {name:'Bedian Road',sub:'Bhatta Chowk → DHA Phase 6',baseMin:15,dist:'9.8',lat:31.4645,lng:74.4172,to:'DHA Phase 6, Lahore'},
+  {name:'Kalma Chowk',sub:'Gulberg → Model Town',baseMin:8,dist:'3.5',lat:31.5020,lng:74.3312,to:'Model Town, Lahore'},
+  {name:'Ferozepur Road',sub:'Kalma Chowk → Chungi Amar Sidhu',baseMin:18,dist:'14.2',lat:31.4725,lng:74.3648,to:'Chungi Amar Sidhu, Lahore'},
+  {name:'Mall Road',sub:'Anarkali → Governor House',baseMin:12,dist:'6.1',lat:31.5583,lng:74.3325,to:'Anarkali, Lahore'},
+  {name:'Canal Bank Road',sub:'Thokar → Mughal Pura',baseMin:20,dist:'15.4',lat:31.5182,lng:74.3148,to:'Mughal Pura, Lahore'},
+];
+
+// ══════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════
+let map, routeLayer, markersLayer;
+let timeMode = 'live';
+let savedRoutes = JSON.parse(localStorage.getItem('lhtraffic_saved_v2') || '[]');
+let currentStats = null;
+let weatherData = null; // live weather
+let liveAlerts = []; // computed alerts
+
+// ══════════════════════════════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════════════════════════════
+function updateClock(){
+  if(timeMode==='live'){
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-PK',{hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  } else {
+    // Simulation mode mein simulated time dikhao
+    const simLabels={morning:'09:00:00 AM',afternoon:'02:00:00 PM',evening:'06:15:00 PM'};
+    document.getElementById('clock').textContent = simLabels[timeMode]||'--:--:--';
+  }
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// ══════════════════════════════════════════════════════════════════
+// TIME MODE
+// ══════════════════════════════════════════════════════════════════
+function getActiveTime(){
+  if(timeMode==='live'){const n=new Date();return{h:n.getHours(),d:n.getDay(),label:'Live System Time'}}
+  if(timeMode==='morning')return{h:9,d:1,label:'09:00 AM (Subah Rush)'};
+  if(timeMode==='afternoon')return{h:14,d:1,label:'02:00 PM (Dopehar)'};
+  return{h:18,d:3,label:'06:15 PM (Shaam Peak)'};
+}
+
+function setTimeMode(m){
+  timeMode=m;
+  ['live','morning','afternoon','evening'].forEach(x=>{
+    document.getElementById('t-'+x).classList.toggle('active',x===m);
+  });
+  const {label}=getActiveTime();
+  document.getElementById('time-label').textContent=label;
+  updateClock(); // clock foran update ho
+  renderRoads();
+  renderRoadMarkers(); // map markers bhi update hon simulation time ke saath
+  computeAlerts();    // alerts bhi nayi time ke mutabiq update hon
+  // re-check route silently
+  const from=document.getElementById('inp-from').value;
+  const to=document.getElementById('inp-to').value;
+  if(from&&to)checkRoute(false);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TRAFFIC PROFILE
+// ══════════════════════════════════════════════════════════════════
+function getTrafficProfile(h,d){
+  const isWeekend=d===0||d===6;
+  if(isWeekend)return{level:'light',mult:1.1,color:'#10b981',label:'Bilkul Saaf',desc:'Weekend ki wajah se roads khuli hain.',clear:'Is waqt safar ke liye mozu hai.'};
+  if(h>=8&&h<=10)return{level:'heavy',mult:2.4,color:'#f97316',label:'Bhari Jam',desc:'Subah peak! Office aur school rush shadeed hai.',clear:'Takreeban 11:00 AM ke baad normal.'};
+  if(h>=17&&h<=20)return{level:'severe',mult:3.2,color:'#dc2626',label:'Shadeed Jam',desc:'Shaam ki worst rush! Alternative rasta zaroor dhoondein.',clear:'Raat 9 baje tak clear hogi.'};
+  if(h>=11&&h<=16)return{level:'medium',mult:1.5,color:'#f59e0b',label:'Normal Rush',desc:'Mid-day traffic. Signal par ruk sakte hain.',clear:'Agli 1-2 ghante yahi rahegi.'};
+  return{level:'light',mult:1.05,color:'#10b981',label:'Bilkul Saaf',desc:'Raat/Subah sawere — roads par traffic nahi hai.',clear:'Bina rukawat tezi se jayenge.'};
+}
+
+// ══════════════════════════════════════════════════════════════════
+// OPEN-METEO WEATHER (FREE, NO API KEY)
+// ══════════════════════════════════════════════════════════════════
+async function fetchWeather(){
+  try{
+    // Lahore coords
+    const url='https://api.open-meteo.com/v1/forecast?latitude=31.5204&longitude=74.3587&current=temperature_2m,weather_code,wind_speed_10m,precipitation,relative_humidity_2m&wind_speed_unit=kmh&timezone=Asia%2FKarachi';
+    const res=await fetch(url);
+    const data=await res.json();
+    const c=data.current;
+    weatherData={
+      temp:Math.round(c.temperature_2m),
+      code:c.weather_code,
+      wind:Math.round(c.wind_speed_10m),
+      rain:c.precipitation,      // mm
+      humidity:c.relative_humidity_2m,
+    };
+    renderWeather();
+    computeAlerts();
+  }catch(e){
+    console.warn('Weather fetch failed:',e);
+    weatherData=null;
+    computeAlerts();
+  }
+}
+
+function weatherCodeInfo(code){
+  if(code===0)return{icon:'☀️',desc:'Saaf Asmaan'};
+  if(code<=3)return{icon:'⛅',desc:'Gehray Badal'};
+  if(code<=49)return{icon:'🌫️',desc:'Kohray Wali Subah'};
+  if(code<=59)return{icon:'🌦️',desc:'Hafif Baarish'};
+  if(code<=69)return{icon:'🌧️',desc:'Tez Baarish'};
+  if(code<=79)return{icon:'❄️',desc:'Olay / Barf'};
+  if(code<=84)return{icon:'🌧️',desc:'Shower'};
+  if(code<=99)return{icon:'⛈️',desc:'Aandhi Toofan'};
+  return{icon:'🌤️',desc:'Waqfi Cloudy'};
+}
+
+function renderWeather(){
+  if(!weatherData)return;
+  const info=weatherCodeInfo(weatherData.code);
+  document.getElementById('w-icon').textContent=info.icon;
+  document.getElementById('w-temp').textContent=`${weatherData.temp}°C — ${info.desc}`;
+  document.getElementById('w-desc').textContent=`Hawa: ${weatherData.wind} km/h • Namkeen: ${weatherData.humidity}%${weatherData.rain>0?' • 🌧️ '+weatherData.rain.toFixed(1)+'mm baarish':''}`;
+
+  const tags=[];
+  if(weatherData.rain>0.5)tags.push({t:'🌧️ Baarish Ho Rahi Hai',c:'rgba(96,165,250,.25)'});
+  if(weatherData.rain>5)tags.push({t:'🌊 Tez Baarish',c:'rgba(124,58,237,.25)'});
+  if(weatherData.wind>40)tags.push({t:'💨 Tez Hawa',c:'rgba(249,115,22,.2)'});
+  if(weatherData.humidity>85)tags.push({t:'💧 Zyada Namkeen',c:'rgba(59,130,246,.2)'});
+  document.getElementById('w-tags').innerHTML=tags.map(t=>`<span class="w-tag" style="background:${t.c}">${t.t}</span>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// AQI — WAQI API (free key via open endpoint)
+// ══════════════════════════════════════════════════════════════════
+async function fetchAQI(){
+  try{
+    // Using open-meteo air quality as fallback (no key needed)
+    const url='https://air-quality-api.open-meteo.com/v1/air-quality?latitude=31.5204&longitude=74.3587&current=pm10,pm2_5,us_aqi';
+    const res=await fetch(url);
+    const data=await res.json();
+    const aqi=Math.round(data.current?.us_aqi||120);
+    let label,color;
+    if(aqi<=50){label='Good 😊';color='#10b981';}
+    else if(aqi<=100){label='Moderate 😐';color='#f59e0b';}
+    else if(aqi<=150){label='Unhealthy (Sensitive) 😷';color='#f97316';}
+    else if(aqi<=200){label='Unhealthy 🤧';color='#dc2626';}
+    else{label='Hazardous ☠️';color='#7c3aed';}
+    const badge=document.getElementById('aqi-badge');
+    badge.style.color=label.includes('Good')?'#6ee7b7':'#fdba74';
+    document.getElementById('aqi-val').textContent=`${aqi} ${label}`;
+  }catch(e){console.warn('AQI fetch failed')}
+}
+
+// ══════════════════════════════════════════════════════════════════
+// NAMAZ TIME ALERTS (Lahore prayer times — calculated approximation)
+// ══════════════════════════════════════════════════════════════════
+function getNamazAlert(h, d){
+  // Simulation time use karo, live Date() nahi
+  const mins = h * 60 + (timeMode === 'live' ? new Date().getMinutes() : 0);
+
+  const prayers = [
+    {name:'فجر (Fajr)',  start:4*60+45,  end:5*60+15,  icon:'🌙', afterMins:20,
+     desc:'Fajr namaz ka waqt — mosques ke aas paas traffic slow ho sakti hai.'},
+    {name:'ظہر (Zuhr)',  start:12*60+25,  end:12*60+55, icon:'☀️', afterMins:25,
+     desc:'Zuhr ki namaz — Juma ke din (Friday) zyada rush hoti hai mosques ke bahar.'},
+    {name:'عصر (Asr)',   start:15*60+40,  end:16*60+10, icon:'🌤️', afterMins:20,
+     desc:'Asr namaz ka waqt — local mosques ke qareeb sadkein thodi slow ho sakti hain.'},
+    {name:'مغرب (Maghrib)', start:18*60+15, end:18*60+40, icon:'🌅', afterMins:15,
+     desc:'Maghrib ka waqt — aksar log ghar ya masjid ki taraf jaate hain, rush barh jati hai.'},
+    {name:'عشاء (Isha)', start:19*60+40,  end:20*60+10, icon:'🌙', afterMins:20,
+     desc:'Isha ki namaz — raat ki shuruat, traffic halki rehti hai lekin mosques ke paas slow.'},
+  ];
+
+  // During namaz
+  for(const p of prayers){
+    if(mins>=p.start && mins<=p.end){
+      const remaining = p.end - mins;
+      return {
+        type:'namaz', icon:p.icon, cls:'alert-namaz',
+        title:`${p.name} — نماز کا وقت (${remaining} minute baaki)`,
+        desc:`${p.desc} Mosque ke qareeb guzarna ho toh thoda wait karein ya alternative rasta lein.`,
+        alt:{label:'Mashwara',text:'Namaz ke baad 10-15 minute mein traffic normal ho jati hai — thoda intezaar behtar hai'}
+      };
+    }
+  }
+
+  // About to start (10 min before)
+  for(const p of prayers){
+    if(mins>=(p.start-10) && mins<p.start){
+      const startsIn = p.start - mins;
+      return {
+        type:'namaz', icon:p.icon, cls:'alert-namaz',
+        title:`${p.name} — ${startsIn} minute mein shuru hogi`,
+        desc:`${startsIn} minute mein namaz ka waqt — abhi nikal jaayein toh behtar, warna ${p.afterMins} minute delay expect karein.`,
+        alt:{label:'Mashwara',text:'Namaz se pehle 10 minute available hain — abhi nikal sakte hain ya namaz ke baad jaaein'}
+      };
+    }
+  }
+
+  // Just ended (15 min after)
+  for(const p of prayers){
+    if(mins>p.end && mins<=(p.end+15)){
+      const agoMins = mins - p.end;
+      return {
+        type:'namaz', icon:'✅', cls:'alert-namaz',
+        title:`${p.name} khatam hui — ${agoMins} minute pehle`,
+        desc:'Namaz khatam ho gayi hai. Mosques ke paas traffic ab normal ho rahi hai.',
+        alt:null
+      };
+    }
+  }
+
+  return null; // koi namaz alert nahi
+}
+
+// ══════════════════════════════════════════════════════════════════
+// COMPUTE REAL ALERTS (based on weather + time profile + known Lahore spots)
+// ══════════════════════════════════════════════════════════════════
+function computeAlerts(){
+  const {h,d}=getActiveTime();
+  const prof=getTrafficProfile(h,d);
+  const alerts=[];
+
+  // ── Rain alerts
+  if(weatherData&&weatherData.rain>0.2){
+    const heavy=weatherData.rain>5;
+    alerts.push({
+      type:'rain',
+      icon:heavy?'⛈️':'🌧️',
+      cls:'alert-rain',
+      title:heavy?'Tez Baarish — سڑکیں خطرناک':'Hafif Baarish Ho Rahi Hai',
+      desc:heavy
+        ?`Lahore mein ${weatherData.rain.toFixed(1)}mm baarish — tez baarish mein brake distance barh jata hai. Slowly chalein.`
+        :`Halki baarish ho rahi hai (${weatherData.rain.toFixed(1)}mm). Sadkein thodi gilas ho sakti hain.`,
+      alt:heavy?{label:'Alternative Route',text:'Thokar → Ring Road (M-2) → bypass use karein — pani kam hoga'}:null
+    });
+  }
+
+  // ── Flooding alerts (rain > 8mm = flood risk in Lahore)
+  if(weatherData&&weatherData.rain>8){
+    alerts.push({
+      type:'flood',
+      icon:'🌊',
+      cls:'alert-flood',
+      title:'Pani Zayda Hai — سڑکوں پر سیلابی صورتحال',
+      desc:`Tez baarish (${weatherData.rain.toFixed(1)}mm) ke baad Lahore ke nichle ilakon mein pani jama ho gaya hai. Underpass aur puliyon se bachein.`,
+      alt:{label:'Flood-Free Routes',text:'Canal Road upper section • DHA main boulevard • Jail Road elevated bypass'}
+    });
+  }
+
+  // ── Traffic jam alerts by time
+  if(prof.level==='severe'||prof.level==='heavy'){
+    alerts.push({
+      type:'jam',
+      icon:'🚗',
+      cls:'alert-jam',
+      title:prof.level==='severe'?'Shadeed Traffic Jam — بدترین ٹریفک':'Subah Ka Rush — Rush Hour',
+      desc:prof.desc,
+      alt:{label:'Alternative Route',text:'Ring Road (M-2 link) → BRTS Canal Road → Bach ke nikalein main road se'}
+    });
+  }
+
+  // ── Specific Lahore known problem spots
+  if(h>=8&&h<=10){
+    alerts.push({
+      type:'road',
+      icon:'🚧',
+      cls:'alert-road',
+      title:'Thokar Niaz Baig — Shadeed Jam',
+      desc:'Har roz subah 8-10 baje Thokar crossing par bhari jam rehti hai. 20+ minute delay expect karein.',
+      alt:{label:'Avoid Thokar',text:'Bedian Road → DHA Phase 1 → Canal side se nikalein'}
+    });
+  }
+  if(h>=17&&h<=20){
+    alerts.push({
+      type:'jam',
+      icon:'🔴',
+      cls:'alert-jam',
+      title:'Kalma Chowk — Peak Rush',
+      desc:'Shaam 5-8 baje Kalma Chowk aur Ferozepur Road par shadeed jam. BRTS bus lane use karein.',
+      alt:{label:'Alternative',text:'Liberty → Barkat Market → Model Town link road → bypass karein'}
+    });
+    alerts.push({
+      type:'jam',
+      icon:'🚦',
+      cls:'alert-jam',
+      title:'Mall Road — Evening Closure Risk',
+      desc:'VIP movement ki wajah se Mall Road aksar shaam ko band hoti hai.',
+      alt:{label:'Route',text:'Lawrence Road ya Jail Road use karein Mall Road ki jagah'}
+    });
+  }
+
+  // ── Road damage — sirf tab dikhaein jab route us area se guzre
+  const from=(document.getElementById('inp-from')||{}).value||'';
+  const to=(document.getElementById('inp-to')||{}).value||'';
+  const routeText=(from+' '+to).toLowerCase();
+
+  const nearSamnabad=routeText.includes('samnabad')||routeText.includes('gulshan ravi')||routeText.includes('shahdara')||routeText.includes('shafiqabad');
+  if(nearSamnabad){
+    alerts.push({
+      type:'road',icon:'🚧',cls:'alert-road',
+      title:'Samnabad Underpass — Kharaab Sadak',
+      desc:'Samnabad underpass ke paas sadak kharab hai. Gadhey aur kharaab asphalt se gaari damage ho sakti hai.',
+      alt:{label:'Avoid',text:'Gulshan Ravi Road se guzar ke Samnabad bypass karein'}
+    });
+  }
+
+  // ── Namaz Time Alert
+  const namazAlert=getNamazAlert(h, d);
+  if(namazAlert) alerts.push(namazAlert);
+
+  // ── All clear notice sirf tab jab koi traffic jam ya baarish alert nahi
+  const hasTrafficAlert=alerts.some(a=>a.type==='jam'||a.type==='rain'||a.type==='flood');
+  if(!hasTrafficAlert && prof.level==='light'){
+    alerts.unshift({
+      type:'clear',
+      icon:'✅',
+      cls:'alert-clear',
+      title:'Lahore Traffic — Khuli Sadkein',
+      desc:'Is waqt Lahore mein traffic normal hai. Safar ke liye acha waqt hai.',
+      alt:null
+    });
+  }
+
+  liveAlerts=alerts;
+  renderAlerts();
+  if(map)addAlertMarkersToMap();
+}
+
+function renderAlerts(){
+  const panel=document.getElementById('alerts-panel');
+  if(liveAlerts.length===0){
+    panel.innerHTML='<div class="alert-item alert-clear"><div class="alert-icon">✅</div><div class="alert-body"><h4>Koi Alert Nahi</h4><p>Sab kuch normal hai.</p></div></div>';
+    return;
+  }
+  panel.innerHTML=liveAlerts.map(a=>`
+    <div class="alert-item ${a.cls}">
+      <div class="alert-icon">${a.icon}</div>
+      <div class="alert-body">
+        <h4>${a.title}</h4>
+        <p>${a.desc}</p>
+        ${a.alt?`<div class="alt-route"><div class="alt-label">🔀 متبادل راستہ</div>${a.alt.text}</div>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MAP INIT
+// ══════════════════════════════════════════════════════════════════
+function switchMapTab(tab){
+  const osmWrap=document.getElementById('map-osm-wrap');
+  const googleWrap=document.getElementById('map-google-wrap');
+  const tabOsm=document.getElementById('tab-osm');
+  const tabGoogle=document.getElementById('tab-google');
+  if(tab==='osm'){
+    osmWrap.style.display='block';
+    googleWrap.style.display='none';
+    tabOsm.style.background='linear-gradient(135deg,rgba(59,130,246,.2),rgba(99,102,241,.2))';
+    tabOsm.style.borderColor='var(--accent2)';
+    tabOsm.style.color='#c7d2fe';
+    tabGoogle.style.background='var(--surface2)';
+    tabGoogle.style.borderColor='var(--border2)';
+    tabGoogle.style.color='#94a3b8';
+    if(map) map.invalidateSize();
+  } else {
+    osmWrap.style.display='none';
+    googleWrap.style.display='block';
+    tabOsm.style.background='var(--surface2)';
+    tabOsm.style.borderColor='var(--border2)';
+    tabOsm.style.color='#94a3b8';
+    tabGoogle.style.background='linear-gradient(135deg,rgba(59,130,246,.2),rgba(99,102,241,.2))';
+    tabGoogle.style.borderColor='var(--accent2)';
+    tabGoogle.style.color='#c7d2fe';
+  }
+}
+
+function updateGoogleMap(from, to){
+  // No API key needed — direct Google Maps embed
+  const orig=encodeURIComponent(from+', Lahore, Pakistan');
+  const dest=encodeURIComponent(to+', Lahore, Pakistan');
+  // Google Maps directions embed (no key required)
+  const src=`https://maps.google.com/maps?saddr=${orig}&daddr=${dest}&output=embed&hl=ur`;
+  document.getElementById('google-map-frame').src=src;
+  // Direct clickable link
+  const directUrl=`https://www.google.com/maps/dir/${orig}/${dest}`;
+  document.getElementById('gmaps-link').href=directUrl;
+}
+
+function initMap(){
+  map=L.map('map',{center:[31.5204,74.3587],zoom:12,maxZoom:18,minZoom:10});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  routeLayer=L.layerGroup().addTo(map);
+  markersLayer=L.layerGroup().addTo(map);
+  document.getElementById('map-status').textContent='✅ Map Ready';
+  document.getElementById('map-status').className='map-status ready';
+  // Map ko apna size theek se pata chale — tile loading fix
+  setTimeout(()=>{ map.invalidateSize(); renderRoadMarkers(); },200);
+  // initial route
+  setTimeout(()=>checkRoute(false),800);
+}
+
+function pinIcon(color){
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:18px;height:18px;background:${color};border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>`,
+    iconSize:[18,18],iconAnchor:[9,9]
+  });
+}
+
+function alertMarkerIcon(emoji){
+  return L.divIcon({
+    className:'',
+    html:`<div style="font-size:20px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))">${emoji}</div>`,
+    iconSize:[24,24],iconAnchor:[12,12]
+  });
+}
+
+function renderRoadMarkersOnLayer(){
+  if(!markersLayer)return;
+  const {h,d}=getActiveTime();
+  const prof=getTrafficProfile(h,d);
+  MAIN_ROADS.forEach(road=>{
+    L.circleMarker([road.lat,road.lng],{radius:8,fillColor:prof.color,color:'#fff',weight:2,fillOpacity:.9})
+      .addTo(markersLayer)
+      .bindPopup(`<b>🚦 ${road.name}</b><br/><small>${road.sub}</small><br/><span style="color:${prof.color};font-weight:700">${prof.label}</span>`);
+  });
+}
+
+function renderRoadMarkers(){
+  if(!markersLayer)return;
+  markersLayer.clearLayers();
+  renderRoadMarkersOnLayer();
+}
+
+function addAlertMarkersToMap(){
+  if(!markersLayer)return;
+  markersLayer.clearLayers();
+  renderRoadMarkersOnLayer();
+
+  const {h}=getActiveTime();
+  const spots=[];
+
+  // Sirf active time ke hisaab se markers lagao
+  if(h>=8&&h<=10){
+    spots.push({lat:31.4704,lng:74.2403,icon:'🚧',popup:'<b>🚧 Thokar Niaz Baig</b><br/>Subah Rush — 20+ min delay'});
+  }
+  if(h>=17&&h<=20){
+    spots.push({lat:31.5020,lng:74.3312,icon:'🚦',popup:'<b>🚦 Kalma Chowk</b><br/>Shaam Peak Rush'});
+    spots.push({lat:31.5562,lng:74.3259,icon:'🔴',popup:'<b>🔴 Mall Road</b><br/>Evening Closure Risk'});
+  }
+  // Samnabad road damage — hamesha
+  spots.push({lat:31.5488,lng:74.3121,icon:'⚠️',popup:'<b>⚠️ Samnabad</b><br/>Kharaab Sadak — Gadhey hain'});
+
+  // Baarish ke waqt flood spots
+  if(weatherData&&weatherData.rain>3){
+    spots.push({lat:31.5658,lng:74.3148,icon:'🌊',popup:'<b>🌊 GPO Area</b><br/>Pani Zayda — Flood Risk'});
+    spots.push({lat:31.5925,lng:74.3095,icon:'🌊',popup:'<b>🌊 Minar-e-Pak Area</b><br/>Underpass Blocked'});
+  }
+
+  spots.forEach(s=>{
+    L.marker([s.lat,s.lng],{icon:alertMarkerIcon(s.icon)})
+      .addTo(markersLayer)
+      .bindPopup(s.popup);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RESOLVE COORDS
+// ══════════════════════════════════════════════════════════════════
+async function resolveCoords(query){
+  const norm=query.toLowerCase().replace(/,?\s*lahore/g,'').replace(/ pakistan/g,'').trim();
+  for(const k of Object.keys(HOTSPOTS)){
+    if(norm.includes(k)||k.includes(norm))return HOTSPOTS[k];
+  }
+  try{
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query+', Lahore, Pakistan')}&format=json&limit=1`,{headers:{'Accept-Language':'en'}});
+    const data=await res.json();
+    if(data&&data.length>0)return{lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+  }catch(e){}
+  return HOTSPOTS['thokar niaz baig'];
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MAIN CHECK ROUTE
+// ══════════════════════════════════════════════════════════════════
+async function checkRoute(speak=true){
+  const from=document.getElementById('inp-from').value.trim();
+  const to=document.getElementById('inp-to').value.trim();
+  if(!from||!to)return;
+
+  const btn=document.getElementById('search-btn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin">⚙️</span> Route check ho raha hai...';
+
+  try{
+    const [startC,endC]=await Promise.all([resolveCoords(from),resolveCoords(to)]);
+
+    let geom=[],distKm=0,normalSecs=0,usedBackup=false;
+
+    try{
+      const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${startC.lng},${startC.lat};${endC.lng},${endC.lat}?overview=full&geometries=geojson&alternatives=true`);
+      const d=await r.json();
+      if(d?.code==='Ok'&&d.routes?.length>0){
+        const main=d.routes[0];
+        distKm=main.distance/1000;
+        normalSecs=main.duration;
+        geom=main.geometry.coordinates.map(c=>[c[1],c[0]]);
+
+        // Build alternative routes from OSRM alternates
+        renderAlternativeRoutes(d.routes,from,to);
+      }else throw new Error('empty');
+    }catch(e){
+      usedBackup=true;
+      const R=6371,dLat=(endC.lat-startC.lat)*Math.PI/180,dLng=(endC.lng-startC.lng)*Math.PI/180;
+      const a=Math.sin(dLat/2)**2+Math.cos(startC.lat*Math.PI/180)*Math.cos(endC.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+      distKm=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      normalSecs=(distKm/40)*3600;
+      geom=[[startC.lat,startC.lng],[endC.lat,endC.lng]];
+      renderAlternativeRoutes(null,from,to);
+    }
+
+    const {h,d:day}=getActiveTime();
+    const prof=getTrafficProfile(h,day);
+    const normalMin=Math.max(2,Math.round(normalSecs/60));
+    const trafficMin=Math.round(normalMin*prof.mult);
+    const delayMin=Math.max(0,trafficMin-normalMin);
+    distKm=parseFloat(distKm.toFixed(1));
+    const fuel=parseFloat((distKm*0.09*prof.mult*0.6).toFixed(2));
+    const co2=(fuel*2.392).toFixed(2);
+
+    currentStats={normalMin,trafficMin,distKm,delayMin,fuel,co2,from,to,prof};
+
+    // render stats
+    document.getElementById('stats-card').style.display='block';
+    document.getElementById('route-fromto').textContent=`${from} ➔ ${to}`;
+    const badge=document.getElementById('traffic-badge');
+    badge.textContent=`🚦 ${prof.label}`;
+    badge.style.color=prof.color;
+    badge.style.borderColor=prof.color+'55';
+    badge.style.background=prof.color+'12';
+
+    document.getElementById('s-normal').textContent=normalMin;
+    document.getElementById('s-traffic').textContent=trafficMin;
+    document.getElementById('s-dist').textContent=distKm;
+    document.getElementById('s-fuel').textContent=fuel+' L';
+    document.getElementById('s-fuel-rs').textContent='≈ Rs '+(fuel*295).toFixed(0);
+    document.getElementById('s-co2').textContent=co2+' kg';
+
+    const adv=document.getElementById('advisory-box');
+    adv.style.borderColor=prof.color+'40';
+    adv.style.background=prof.color+'08';
+    document.getElementById('advisory-title').style.color=prof.color;
+    document.getElementById('advisory-title').textContent=prof.label;
+    document.getElementById('advisory-desc').textContent=prof.desc;
+    document.getElementById('advisory-clear').textContent='ℹ️ '+prof.clear;
+
+    // Add weather warning to advisory if rain
+    if(weatherData&&weatherData.rain>0.5){
+      document.getElementById('advisory-desc').textContent+=` ⚠️ Baarish (${weatherData.rain.toFixed(1)}mm) ki wajah se sadkein gilas hain — dhyaan se chalein!`;
+    }
+
+    // draw on map
+    if(routeLayer){
+      routeLayer.clearLayers();
+      L.polyline(geom,{color:prof.color,weight:6,opacity:.88,lineJoin:'round'}).addTo(routeLayer);
+      L.marker([startC.lat,startC.lng],{icon:pinIcon('#10b981')}).addTo(routeLayer).bindPopup(`🟢 Start: ${from}`);
+      L.marker([endC.lat,endC.lng],{icon:pinIcon('#dc2626')}).addTo(routeLayer).bindPopup(`🔴 End: ${to}`);
+      map.invalidateSize();
+      map.fitBounds(L.latLngBounds([[startC.lat,startC.lng],[endC.lat,endC.lng]]),{padding:[50,50]});
+    }
+
+    // Google Maps bhi update karo
+    updateGoogleMap(from, to);
+
+    if(speak){
+      const txt=`${from} se ${to} tak safar. Faasla ${distKm} kilometer. Normal waqt ${normalMin} minute, traffic ke saath ${trafficMin} minute lagenge. Delay ${delayMin} minute. ${prof.desc}${weatherData&&weatherData.rain>0.5?' Baarish ho rahi hai, dhyaan se chalein.':''}`;
+      triggerSpeech(txt);
+    }
+
+    // re-compute alerts now that we have route context
+    computeAlerts();
+
+  }catch(e){
+    console.error(e);
+    alert('Route maloom nahi ho saka. Spelling check karein!');
+  }finally{
+    btn.disabled=false;
+    btn.innerHTML='<span>🔍</span> Check Live Route • سفر چیک کریں';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ALTERNATIVE ROUTES
+// ══════════════════════════════════════════════════════════════════
+function renderAlternativeRoutes(osrmRoutes, from, to){
+  const section=document.getElementById('alt-routes-section');
+  const list=document.getElementById('alt-routes-list');
+  const {h,d}=getActiveTime();
+  const prof=getTrafficProfile(h,d);
+
+  let alts=[];
+
+  // If OSRM gave us real alternatives
+  if(osrmRoutes&&osrmRoutes.length>1){
+    osrmRoutes.slice(1,3).forEach((r,i)=>{
+      const nm=Math.max(2,Math.round(r.duration/60));
+      const tm=Math.round(nm*prof.mult);
+      const km=(r.distance/1000).toFixed(1);
+      alts.push({name:`متبادل راستہ ${i+1}`,detail:`${km} km — OSRM route`,time:tm,color:'#10b981',real:true});
+    });
+  }
+
+  // Always add contextual Lahore alternatives
+  const lahoreAlts=getLahoreAlternatives(from,to,prof);
+  alts=[...alts,...lahoreAlts];
+
+  if(alts.length===0){
+    section.style.display='none';
+    return;
+  }
+  section.style.display='block';
+  list.innerHTML=alts.map(a=>`
+    <div class="alt-route-item">
+      <div>
+        <div class="name">${a.name}</div>
+        <div class="detail">${a.detail}</div>
+      </div>
+      <div class="time" style="color:${a.color}">${a.time} min</div>
+    </div>
+  `).join('');
+}
+
+function getLahoreAlternatives(from,to,prof){
+  const f=from.toLowerCase();const t=to.toLowerCase();
+  const alts=[];
+  const baseT=prof.mult;
+
+  // Thokar ↔ Liberty / Gulberg area
+  if((f.includes('thokar')&&(t.includes('liberty')||t.includes('gulberg')))||
+     (t.includes('thokar')&&(f.includes('liberty')||f.includes('gulberg')))){
+    alts.push({name:'Ferozepur Road → Kalma Chowk',detail:'Direct aur fast route',time:Math.round(22*baseT),color:'#f59e0b'});
+    alts.push({name:'Ring Road (M-2 Link) → Barki Road',detail:'Bypass route, kam traffic',time:Math.round(28*Math.max(1,baseT*.8)),color:'#10b981'});
+    alts.push({name:'Model Town Link → Jail Road',detail:'Agar Ferozepur Road jam ho',time:Math.round(30*baseT),color:'#f97316'});
+  }
+  // DHA / Bedian area
+  else if(f.includes('dha')||t.includes('dha')||f.includes('bedian')||t.includes('bedian')){
+    alts.push({name:'Barki Road → DHA Main Gate',detail:'Avoid Bedian Road jam',time:Math.round(18*baseT*.9),color:'#10b981'});
+    alts.push({name:'Raiwind Road → Phase 6 back gate',detail:'Longer but open',time:Math.round(25*baseT),color:'#f59e0b'});
+  }
+  // Airport
+  else if(f.includes('airport')||t.includes('airport')){
+    alts.push({name:'Canal Road → Airport Avenue',detail:'Seedha airport road',time:Math.round(20*baseT*.85),color:'#10b981'});
+    alts.push({name:'GT Road → Shahdara → Airport',detail:'Avoid main city',time:Math.round(30*baseT),color:'#f59e0b'});
+  }
+  // Generic alternatives
+  else{
+    if(prof.level==='severe'||prof.level==='heavy'){
+      alts.push({name:'Ring Road (M-2 Link)',detail:'Sheher se bahir ka bypass',time:Math.round(35*Math.max(1,baseT*.6)),color:'#10b981'});
+      alts.push({name:'BRTS Bus Lane — Canal Road',detail:'Bus rapid transit route',time:Math.round(25*Math.max(1,baseT*.7)),color:'#3b82f6'});
+    }
+  }
+
+  // Rain-specific alternatives
+  if(weatherData&&weatherData.rain>3){
+    alts.push({name:'Elevated Roads — Flyover se',detail:'Pani se bachne ka rasta',time:Math.round(20*prof.mult),color:'#60a5fa'});
+  }
+
+  return alts;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ROADS GRID
+// ══════════════════════════════════════════════════════════════════
+function renderRoads(){
+  const {h,d}=getActiveTime();
+  const prof=getTrafficProfile(h,d);
+  const grid=document.getElementById('roads-grid');
+  grid.innerHTML=MAIN_ROADS.map((road,i)=>{
+    const t=Math.round(road.baseMin*prof.mult*(0.9+(i*0.05)%0.3));
+    const badge=prof.level==='light'?'Clear':prof.level==='medium'?'Slow':'Jam';
+    return`<button class="road-btn" onclick="quickRoad('${road.to}')">
+      <div class="road-btn-left">
+        <div class="road-dot" style="background:${prof.color}"></div>
+        <div>
+          <div class="road-name">${road.name}</div>
+          <div class="road-sub">${road.sub} • ${road.dist}km</div>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="road-time">${t} min</div>
+        <div class="road-badge" style="color:${prof.color};background:${prof.color}18">${badge}</div>
+      </div>
+    </button>`;
+  }).join('');
+}
+
+function quickRoad(dest){
+  document.getElementById('inp-to').value=dest;
+  checkRoute(true);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VOICE
+// ══════════════════════════════════════════════════════════════════
+function triggerSpeech(text){
+  if(!('speechSynthesis' in window))return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='ur-PK';u.rate=.92;u.pitch=1;
+  window.speechSynthesis.speak(u);
+}
+function speakRoute(){
+  if(!currentStats){triggerSpeech('Pehle route check karein.');return;}
+  const s=currentStats;
+  triggerSpeech(`${s.from} se ${s.to} tak faasla ${s.distKm} kilometer. Traffic ke saath ${s.trafficMin} minute lagenge. ${s.prof.desc}${weatherData&&weatherData.rain>0.5?' Baarish ho rahi hai, dhyaan se chalein.':''}`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SAVE / SHARE / SWAP
+// ══════════════════════════════════════════════════════════════════
+function swapRoute(){
+  const f=document.getElementById('inp-from').value;
+  const t=document.getElementById('inp-to').value;
+  document.getElementById('inp-from').value=t;
+  document.getElementById('inp-to').value=f;
+  checkRoute(true);
+}
+
+function saveRoute(){
+  const from=document.getElementById('inp-from').value;
+  const to=document.getElementById('inp-to').value;
+  if(!from||!to)return;
+  if(savedRoutes.some(r=>r.from===from&&r.to===to))return;
+  savedRoutes.unshift({id:Date.now(),from,to,label:`${from.split(',')[0]} → ${to.split(',')[0]}`});
+  savedRoutes=savedRoutes.slice(0,8);
+  localStorage.setItem('lhtraffic_saved_v2',JSON.stringify(savedRoutes));
+  renderSaved();
+  showToast('Route save ho gaya! ★');
+}
+
+function renderSaved(){
+  const list=document.getElementById('saved-list');
+  if(savedRoutes.length===0){list.innerHTML='<p style="font-size:11px;color:var(--muted)">Koi route save nahi kiya abhi.</p>';return;}
+  list.innerHTML=savedRoutes.map(r=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+      <span style="font-size:11px;font-weight:600;color:#e2e8f0;flex:1;cursor:pointer" onclick="loadSaved('${r.from}','${r.to}')">${r.label}</span>
+      <button onclick="deleteSaved(${r.id})" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer" title="Delete">✕</button>
+    </div>
+  `).join('');
+}
+
+function loadSaved(from,to){
+  document.getElementById('inp-from').value=from;
+  document.getElementById('inp-to').value=to;
+  checkRoute(true);
+}
+
+function deleteSaved(id){
+  savedRoutes=savedRoutes.filter(r=>r.id!==id);
+  localStorage.setItem('lhtraffic_saved_v2',JSON.stringify(savedRoutes));
+  renderSaved();
+}
+
+function shareRoute(){
+  if(!currentStats){showToast('Pehle route check karein!');return;}
+  const s=currentStats;
+  const text=`🚦 Lahore Traffic Check\n📍 ${s.from} → ${s.to}\n⏱ ${s.trafficMin} mins (traffic) | 📏 ${s.distKm} km\n🚥 Status: ${s.prof.label}`;
+  if(navigator.share){navigator.share({title:'Lahore Traffic',text}).catch(()=>{});}
+  else{navigator.clipboard.writeText(text).then(()=>showToast('Copy ho gaya! ✅')).catch(()=>showToast('Copy nahi hua'));}
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+window.addEventListener('load',async ()=>{
+  initMap();
+  renderRoads();
+  renderSaved();
+  // fetch real data
+  await Promise.allSettled([fetchWeather(),fetchAQI()]);
+  computeAlerts();
+  // refresh weather every 10 minutes
+  setInterval(()=>{fetchWeather().then(()=>computeAlerts());},10*60*1000);
+  // refresh alerts every 5 mins
+  setInterval(computeAlerts,5*60*1000);
+});
+</script>
+</body>
+</html>
